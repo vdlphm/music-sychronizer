@@ -4,6 +4,8 @@ var cors = require('cors');
 var cookieParser = require('cookie-parser');
 var querystring = require('querystring');
 require('dotenv').config();
+const util = require('./util.js');
+const constant = require('./const.js');
 
 // read env file
 CLIENT_ID=process.env.CLIENT_ID;
@@ -11,42 +13,26 @@ CLIENT_SECRET=process.env.CLIENT_SECRET;
 PORT=process.env.PORT;
 CALL_BACK_URI=`http://localhost:${PORT}/callback`;
 
-// const
-const base_url = 'https://api.spotify.com/v1';
-const authorization_url = 'https://accounts.spotify.com/authorize'
-
 // start an app
 const app = express();
 app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
-var stateKey = 'spotify_auth_state';
 app.use(express.static(__dirname + '/public'))
    .use(cors())
    .use(cookieParser());
 
 // authorization
-var generateRandomString = function(length) {
-  var text = '';
-  var possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
-  for (var i = 0; i < length; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
-};
-
 app.get('/', function(req, res) {
 
-  var state = generateRandomString(16);
-  res.cookie(stateKey, state);
+  var state = util.generateRandomString(16);
+  res.cookie(constant.stateKey, state);
 
   // your application requests authorization
-  var scope = 'playlist-read-private';
   console.debug('Redirecting to Spotify for authentiaction and authorization');
-  res.redirect(authorization_url + '?' +
+  res.redirect(constant.authorizationUrl + '?' +
     querystring.stringify({
       response_type: 'code',
       client_id: CLIENT_ID,
-      scope: scope,
+      scope: constant.scope,
       redirect_uri: CALL_BACK_URI,
       state: state
     }));
@@ -57,7 +43,7 @@ app.get('/callback', function(req, res) {
   // after checking the state parameter
   var code = req.query.code || null;
   var state = req.query.state || null;
-  var storedState = req.cookies ? req.cookies[stateKey] : null;
+  var storedState = req.cookies ? req.cookies[constant.stateKey] : null;
 
   if (state === null || state !== storedState) {
       res.redirect('/#' +
@@ -65,7 +51,7 @@ app.get('/callback', function(req, res) {
           error: 'state_mismatch'
           }));
   } else {
-    res.clearCookie(stateKey);
+    res.clearCookie(constant.stateKey);
     // prepare access token request
     var authOptions = {
       url: 'https://accounts.spotify.com/api/token',
@@ -86,34 +72,33 @@ app.get('/callback', function(req, res) {
           var access_token = body.access_token, 
               refresh_token = body.refresh_token;
           
-          res.redirect('/playlists?' + 
-            querystring.stringify({
-              access_token: access_token
-            }))
+          res.redirect('/playlists?authorization=' + access_token);
       } else {
-          res.redirect('/#' + 
-              querystring.stringify({
-                  error: 'invalid_token'
-              }));
+          res.sendStatus(response.statusCode);
       }
     });
   }
 });
 
 app.get('/playlists', function(req, res) {
-  var access_token = req.query.access_token;
+  var access_token = req.headers.authorization? req.headers.authorization: 'Bearer ' + req.query.authorization;
   var options = {
-      url: base_url + '/me/playlists',
-      headers: { 'Authorization': 'Bearer ' + access_token },
+      url: `${constant.baseUrl}/me/playlists`,
+      headers: { 'Authorization': access_token },
       json: true
   };
+  console.log('Get user playlists');
   request.get(options, function(error, response, body) {
     if(!error && response.statusCode === 200) {
-      var a = function myFunction(item) {
-        console.log(item.id + '---' + item.name);
+      var playlists = [];
+      var getPlaylistInfo = function getPlaylistInfo(item) {
+        playlists.push({'id': item.id, 'name': item.name});
       }
-      var playlists = body.items;
-      playlists.forEach(a);
+      body.items.forEach(getPlaylistInfo);
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({playlists: playlists}));
+    } else {
+      res.sendStatus(response.statusCode);
     }
   });
 });
