@@ -1,8 +1,9 @@
-var express = require('express'); // Express web server framework
-var request = require('request'); // "Request" library
-var cors = require('cors');
-var cookieParser = require('cookie-parser');
-var querystring = require('querystring');
+const express = require('express'); // Express web server framework
+const request = require('request'); // "Request" library
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const querystring = require('querystring');
+const mongoose = require('mongoose');
 require('dotenv').config();
 const util = require('./util.js');
 const constant = require('./const.js');
@@ -15,6 +16,13 @@ CALL_BACK_URI=`http://localhost:${PORT}/callback`;
 
 // start an app
 const app = express();
+mongoose.connect(
+    process.env.MONGODB_URI, 
+    {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+    }
+);
 app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
 app.use(express.static(__dirname + '/public'))
    .use(cors())
