@@ -79,6 +79,7 @@ app.get('/callback', function(req, res) {
       if (!error && response.statusCode === 200) {
           var access_token = body.access_token, 
               refresh_token = body.refresh_token;
+          console.log(access_token);
           
           res.redirect('/playlists?authorization=' + access_token);
       } else {
