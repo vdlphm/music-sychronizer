@@ -20,7 +20,8 @@ mongoose.connect(
     process.env.MONGODB_URI, 
     {
         useNewUrlParser: true,
-        useUnifiedTopology: true
+        useUnifiedTopology: true,
+        authSource:"admin"
     }
 );
 app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
