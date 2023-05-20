@@ -82,7 +82,8 @@ app.get('/callback', function(req, res) {
               refresh_token = body.refresh_token;
           console.log(access_token);
           
-          res.redirect('/playlists?authorization=' + access_token);
+          res.writeHead(200, {'Authorization': 'Bearer ' + access_token});
+          res.end();
       } else {
           res.sendStatus(response.statusCode);
       }
